@@ -14,6 +14,10 @@ import { VirtualPLC } from '@/controls/VirtualPLC';
 import { EventBus } from '@/core/EventBus';
 import type { SystemEvent } from '@/core/events';
 import { logger } from '@/core/Logger';
+import { DatasetGenerator } from '@/dataset/DatasetGenerator';
+import type { DatasetGenerationProgress, DatasetRenderRequest, DatasetRenderResult, DatasetSample } from '@/dataset/DatasetTypes';
+import { EvaluationService, type ProductionAction } from '@/historian/EvaluationService';
+import { MetricsEngine } from '@/historian/MetricsEngine';
 import type { DefectType } from '@/models/DefectType';
 import type { ProductGroundTruth } from '@/models/GroundTruth';
 import type { Product } from '@/models/Product';
@@ -50,6 +54,7 @@ export interface SceneBridge {
   setCameraOnline?(online: boolean): void;
   /** Hands the vision layer a live pixel handle on CAM01 (plan.md C2). */
   captureVisionFrame?(capturedAtSeconds: number): VisionInput;
+  captureDatasetSample?(request: DatasetRenderRequest): Promise<DatasetRenderResult>;
   render(): void;
   dispose(): void;
 }
@@ -57,6 +62,7 @@ export interface SceneBridge {
 export interface SimulationEngineOptions {
   seed?: number;
   scene?: SceneBridge;
+  visionTimeoutMs?: number;
 }
 
 /** Orchestrates the fixed-step tick. Subsystem update order is deterministic. */
@@ -70,6 +76,8 @@ export class SimulationEngine {
   readonly sensors: SensorManager;
   readonly rejectStation = new RejectStation();
   readonly plc: VirtualPLC;
+  readonly evaluation = new EvaluationService();
+  readonly metrics = new MetricsEngine();
 
   private scene: SceneBridge | undefined;
   private totalSpawned = 0;
@@ -99,7 +107,10 @@ export class SimulationEngine {
     this.productFactory = new ProductFactory(this.groundTruth, rng);
     this.products = new ProductManager(this.productFactory, this.conveyor, this.events);
     this.sensors = new SensorManager(undefined, undefined, this.events);
-    this.plc = new VirtualPLC(this.events);
+    this.plc = new VirtualPLC(
+      this.events,
+      options.visionTimeoutMs === undefined ? {} : { visionTimeoutMs: options.visionTimeoutMs },
+    );
     this.scene = options.scene;
 
     this.outputs = {
@@ -118,6 +129,11 @@ export class SimulationEngine {
     this.events.on('PRODUCT_CREATED', () => {
       this.totalSpawned += 1;
     });
+
+    this.events.on('VISION_COMPLETED', (event) => this.evaluation.recordVision(event));
+    this.events.on('VISION_FAILED', (event) => this.evaluation.recordVisionFailure(event.unitId));
+    this.events.on('PRODUCT_REJECTED', (event) => this.recordEvaluation(event.unitId, 'REJECT'));
+    this.events.on('PRODUCT_ACCEPTED', (event) => this.recordEvaluation(event.unitId, 'ACCEPT'));
 
     this.events.onAny((event) => {
       // Photoeye chatter would bury everything else in a 200-entry ring, and
@@ -326,6 +342,8 @@ export class SimulationEngine {
     this.clock.reset();
     this.products.clear();
     this.groundTruth.clear();
+    this.evaluation.reset();
+    this.metrics.reset();
     this.eventLog.length = 0;
     this.totalSpawned = 0;
     this.totalExited = 0;
@@ -351,6 +369,22 @@ export class SimulationEngine {
 
   injectRandomDefect(): Product | undefined {
     return this.products.spawnRandomDefect(this.clock.elapsedSeconds);
+  }
+
+  async generateDatasetPreview(
+    samplesPerClass: number,
+    seed: number,
+    onProgress?: (progress: DatasetGenerationProgress) => void,
+  ): Promise<DatasetSample[]> {
+    const capture = this.scene?.captureDatasetSample;
+    if (!capture) throw new Error('Dataset rendering requires an attached browser scene');
+    this.stop();
+    this.setRuntimeMode('DATASET_GENERATION');
+    return new DatasetGenerator((request) => capture.call(this.scene, request)).generateBalancedPreview(
+      samplesPerClass,
+      seed,
+      onProgress,
+    );
   }
 
   /** Drives the simulation from real elapsed time, then renders at most once. */
@@ -485,8 +519,21 @@ export class SimulationEngine {
       mockVision: this.mockVision?.getSettings(),
       visionOverlay: this.buildOverlaySnapshot(),
       roboflow: this.roboflow?.status(),
+      qualityMetrics: this.metrics.snapshot(),
       recentEvents: this.eventLog.slice(-EVENT_LOG_CAPACITY),
     };
+  }
+
+  private recordEvaluation(unitId: string, action: ProductionAction): void {
+    const truth = this.groundTruth.get(unitId);
+    if (!truth) return;
+
+    this.metrics.record(this.evaluation.evaluateAction(unitId, action, truth));
+    this.events.emit({
+      type: 'INSPECTION_RECORDED',
+      simulationTime: this.clock.elapsedSeconds,
+      unitId,
+    });
   }
 
   /** Display-only. Bounding boxes never travel through the PLC input image. */

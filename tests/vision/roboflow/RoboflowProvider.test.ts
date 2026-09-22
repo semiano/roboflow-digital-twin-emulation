@@ -34,9 +34,9 @@ const frame = (frameNumber: number): VisionInput => ({
 async function connected(fetchStub: ReturnType<typeof vi.fn>): Promise<RoboflowProvider> {
   vi.stubGlobal('fetch', fetchStub);
   const provider = new RoboflowProvider();
+  provider.setTransport('WORKFLOW');
   provider.client.configure({
     runtime: 'SERVERLESS',
-    transport: 'WORKFLOW',
     apiKey: 'test-key',
     workspace: 'acme',
     workflowId: 'inspect-bottles',
@@ -56,7 +56,12 @@ afterEach(() => {
 describe('RoboflowProvider', () => {
   it('refuses to connect without credentials instead of failing on the first unit', async () => {
     const provider = new RoboflowProvider();
-    provider.client.configure({ apiKey: '', workspace: '', workflowId: '' });
+    provider.client.configure({
+      transport: 'WORKFLOW',
+      apiKey: '',
+      workspace: '',
+      workflowId: '',
+    });
 
     await expect(provider.connect()).rejects.toThrow(/missing configuration/);
     expect(provider.isConnected()).toBe(false);

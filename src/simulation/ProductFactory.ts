@@ -17,6 +17,45 @@ const DEFECT_KEYS: readonly Exclude<DefectType, 'NONE'>[] = [
   'UNDERFILL',
 ];
 
+export function createProductGroundTruth(defectType: DefectType, rng: Rng): ProductGroundTruth {
+  const [crookedMin, crookedMax] = productGeometry.crookedLabelRangeDegrees;
+  const [underfillMin, underfillMax] = productGeometry.underfillRange;
+  const truth: ProductGroundTruth = {
+    defectType,
+    capPresent: true,
+    labelPresent: true,
+    labelRotationDegrees: rng.range(-2.5, 2.5),
+    labelVariant: NOMINAL_LABEL_VARIANT,
+    fillLevel: rng.range(
+      productGeometry.nominalFillLevel - 0.03,
+      productGeometry.nominalFillLevel + 0.03,
+    ),
+    expectedResult: defectType === 'NONE' ? 'PASS' : 'FAIL',
+  };
+
+  switch (defectType) {
+    case 'MISSING_CAP':
+      truth.capPresent = false;
+      break;
+    case 'MISSING_LABEL':
+      truth.labelPresent = false;
+      break;
+    case 'CROOKED_LABEL':
+      truth.labelRotationDegrees = rng.range(crookedMin, crookedMax) * (rng.bool(0.5) ? 1 : -1);
+      break;
+    case 'WRONG_LABEL':
+      truth.labelVariant = rng.pick(ALTERNATE_LABEL_VARIANTS);
+      break;
+    case 'UNDERFILL':
+      truth.fillLevel = rng.range(underfillMin, underfillMax);
+      break;
+    case 'NONE':
+      break;
+  }
+
+  return truth;
+}
+
 /**
  * Builds product records and their private ground truth. Produces data only —
  * meshes are built separately so the engine can run headless in tests.
@@ -72,44 +111,6 @@ export class ProductFactory {
   }
 
   private buildGroundTruth(defectType: DefectType): ProductGroundTruth {
-    const [crookedMin, crookedMax] = productGeometry.crookedLabelRangeDegrees;
-    const [underfillMin, underfillMax] = productGeometry.underfillRange;
-
-    // Good units still vary slightly so the model never sees a perfect constant.
-    const truth: ProductGroundTruth = {
-      defectType,
-      capPresent: true,
-      labelPresent: true,
-      labelRotationDegrees: this.rng.range(-2.5, 2.5),
-      labelVariant: NOMINAL_LABEL_VARIANT,
-      fillLevel: this.rng.range(
-        productGeometry.nominalFillLevel - 0.03,
-        productGeometry.nominalFillLevel + 0.03,
-      ),
-      expectedResult: defectType === 'NONE' ? 'PASS' : 'FAIL',
-    };
-
-    switch (defectType) {
-      case 'MISSING_CAP':
-        truth.capPresent = false;
-        break;
-      case 'MISSING_LABEL':
-        truth.labelPresent = false;
-        break;
-      case 'CROOKED_LABEL':
-        truth.labelRotationDegrees =
-          this.rng.range(crookedMin, crookedMax) * (this.rng.bool(0.5) ? 1 : -1);
-        break;
-      case 'WRONG_LABEL':
-        truth.labelVariant = this.rng.pick(ALTERNATE_LABEL_VARIANTS);
-        break;
-      case 'UNDERFILL':
-        truth.fillLevel = this.rng.range(underfillMin, underfillMax);
-        break;
-      case 'NONE':
-        break;
-    }
-
-    return truth;
+    return createProductGroundTruth(defectType, this.rng);
   }
 }

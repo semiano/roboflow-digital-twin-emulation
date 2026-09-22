@@ -1,7 +1,43 @@
 /// <reference types="vitest" />
-import { defineConfig, loadEnv, type ProxyOptions } from 'vite';
+import { defineConfig, loadEnv, type Plugin, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
+
+function roboflowUploadProxy(): Plugin {
+  return {
+    name: 'roboflow-upload-proxy',
+    configureServer(server) {
+      server.middlewares.use('/rf-upload', async (request, response) => {
+        if (request.method !== 'PUT' || !request.url) {
+          response.statusCode = 405;
+          response.end('Method Not Allowed');
+          return;
+        }
+
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of request) chunks.push(Buffer.from(chunk));
+          const archive = Buffer.concat(chunks);
+          const uploadUrl = new URL(request.url, 'https://storage.googleapis.com');
+          const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/zip',
+              'Content-Length': String(archive.length),
+            },
+            body: archive,
+          });
+          response.statusCode = uploadResponse.status;
+          const responseBody = await uploadResponse.text();
+          response.end(responseBody || 'OK');
+        } catch (error) {
+          response.statusCode = 502;
+          response.end(error instanceof Error ? error.message : String(error));
+        }
+      });
+    },
+  };
+}
 
 /**
  * Roboflow's cloud endpoints send no `Access-Control-Allow-Origin`, so a browser
@@ -49,7 +85,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    plugins: [react()],
+    plugins: [react(), roboflowUploadProxy()],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),

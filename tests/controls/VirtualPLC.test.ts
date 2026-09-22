@@ -21,7 +21,7 @@ describe('VirtualPLC', () => {
     events.onAny((event) => log.push(event));
 
     vision = new ScriptedVisionGateway();
-    plc = new VirtualPLC(events);
+    plc = new VirtualPLC(events, { visionTimeoutMs: 1000 });
     plc.attachVision(vision);
     harness = new PlcHarness(plc);
     harness.startAndSettle();

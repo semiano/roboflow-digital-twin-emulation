@@ -4,7 +4,7 @@ export type FailSafeMode = 'REJECT_UNKNOWN' | 'ALLOW_UNKNOWN' | 'STOP_LINE';
 
 export type LatencyMode = 25 | 50 | 100 | 250 | 500 | 1500 | 'RANDOM';
 
-/** 1500 ms deliberately exceeds `timeoutMs` so the fail-safe is reachable from the HMI. */
+/** 1500 ms remains available for deterministic mock latency testing. */
 export const LATENCY_MODES: readonly LatencyMode[] = [25, 50, 100, 250, 500, 1500, 'RANDOM'];
 
 /**
@@ -34,7 +34,7 @@ const env = import.meta.env;
 
 export const visionConfig = {
   /** PLC gives up on an inference after this long (spec §43). */
-  timeoutMs: 1000,
+  timeoutMs: 5000,
   failSafeMode: 'REJECT_UNKNOWN' as FailSafeMode,
 
   /** Detections below this are not considered evidence of a defect. */
@@ -78,7 +78,7 @@ export const visionConfig = {
      * the inspection lost — otherwise a late response arrives with no pending
      * inspection to match and looks like a tracking error.
      */
-    requestTimeoutMs: 850,
+    requestTimeoutMs: 4500,
     /**
      * The connect-time reachability check is not on the PLC's critical path, so
      * it gets its own budget. Reusing `requestTimeoutMs` made a cold TLS
@@ -167,14 +167,14 @@ export const defectDetectionRegion: Readonly<Record<DefectType, keyof typeof moc
   };
 
 /** Internal defect code -> Roboflow class name (the inverse of roboflowClassMap). */
-export const defectClassNames: Readonly<Record<DefectType, string>> = {
+export const defectClassNames = {
   NONE: 'bottle',
   MISSING_CAP: 'missing_cap',
   MISSING_LABEL: 'missing_label',
   CROOKED_LABEL: 'crooked_label',
   WRONG_LABEL: 'wrong_label',
   UNDERFILL: 'underfill',
-};
+} as const satisfies Readonly<Record<DefectType, string>>;
 
 /**
  * Roboflow class name -> internal defect code. Anything unmapped is ignored by

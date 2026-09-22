@@ -72,6 +72,10 @@ export class InspectionCamera implements CameraStreamAdapter {
     this.renderer.render(scene, this.camera);
   }
 
+  renderNow(scene: THREE.Scene): void {
+    this.renderer.render(scene, this.camera);
+  }
+
   /** The pixel boundary handed to the vision layer (plan.md C2). */
   getMediaStream(): MediaStream {
     this.mediaStream ??= this.canvas.captureStream(CONFIG.fps);

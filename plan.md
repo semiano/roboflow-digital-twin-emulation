@@ -85,7 +85,7 @@ flowchart LR
 | Module | Responsibility |
 |--------|---------------|
 | `DomainRandomizer` | Seeded randomization of lighting/camera/material/pose/background |
-| `AnnotationGenerator` | 3D bbox → screen-space YOLO boxes via camera projection |
+| `AnnotationGenerator` | Whole-product 3D bbox → six-class screen-space YOLO box via camera projection |
 | `DatasetGenerator` | Headless batch scenario runner |
 | `DatasetExporter` | ZIP with `images/`, `labels/`, `dataset.json`, `data.yaml` |
 
@@ -290,13 +290,26 @@ Tasks:
 Tasks:
 1. `DATASET_GENERATION` runtime mode: PLC and conveyor motion disabled; scenario-stepped rendering.
 2. `DomainRandomizer` driven by `DomainRandomizationConfig` + seed for reproducibility.
-3. `AnnotationGenerator`: project mesh bounding volumes through `InspectionCamera01` → screen-space YOLO boxes for `bottle`, `cap`, `label`; visibility/occlusion culling; clamp to frame.
-4. `DatasetGenerator`: N images with configurable defect mix (default 70/10/5/5/5/5); batched with progress UI and cancel.
+3. `AnnotationGenerator`: project the whole product through `InspectionCamera01` and label its
+   YOLO box as `bottle`, `missing_cap`, `missing_label`, `crooked_label`, `wrong_label`, or
+   `underfill`. Component boxes alone cannot represent an absent cap or label and do not match
+   the existing `PredictionMapper` contract.
+4. `DatasetGenerator`: N images with configurable defect mix (default 50/10/10/10/10/10),
+   at least 500 examples per class, batched with progress UI and cancel.
 5. `DatasetExporter`: ZIP containing `images/`, `labels/`, `data.yaml`, `dataset.json` manifest (seed, config, class map).
 6. Camera-pose split discipline (spec §37): training poses A–D, demo pose E — enforced by config, and the demo pose is excluded from generation sets.
 7. Annotation QA overlay mode to visually verify boxes before exporting thousands of images.
+8. Lightweight Training Set HMI workspace: deterministic preview generation, class/split filters,
+   real rendered image browsing, YOLO overlay and row inspection, class balance, manifest export,
+   and explicit Roboflow export/upload/train handoff stages.
+9. Roboflow handoff uses the Platform API's asynchronous ZIP upload, creates an immutable dataset
+   version, and requires operator confirmation before starting a credit-consuming training job.
 
-**Acceptance:** generated ZIP imports into Roboflow with correct boxes; a model trained on it performs on the unseen demo pose.
+**Acceptance:** generated ZIP imports into Roboflow with correct six-class boxes; a model trained
+on it is selected in the active Workflow and evaluated on the unseen demo pose. On a retained,
+balanced test set it must report every per-defect recall, false-reject rate, escape rate, unknown
+rate, mean latency, and P95 latency. The screenshot catalog is then rerun under a new
+configuration-specific directory.
 
 ---
 
@@ -354,8 +367,12 @@ Each phase is "done" only when all are true:
 ```text
 Foundations → P1 Scene → P2 Defects → P3 Sensors+PLC → P4 HMI → P5 Mock Vision
    └── MVP COMPLETE (spec §52) ──┘
-P6 Roboflow → P7 Metrics → P8 Historian → P9 Domain Shift → P10 Dataset Generator
+P6 Roboflow → P7 Evaluation Core → P10 Dataset Generator → Train + Workflow Update
+             → Re-benchmark → P8 Historian/UI → P9 Domain Shift
    └── INTERVIEW DEMO COMPLETE (spec §53) ──┘
 ```
 
-**Next action:** create the project scaffold and Section 2 foundations, then implement Phase 1.
+**Next action:** finish the Phase 7 evaluation core, then complete the Phase 10 generator using
+the six-class annotation contract in `src/dataset/AnnotationGenerator.ts`. Train a Roboflow model
+from that export, update the active Workflow, and rerun the retained screenshot benchmark before
+building domain-shift controls.

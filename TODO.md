@@ -21,7 +21,7 @@
 | 4. HMI | `[x]` Completed | Event log strip closed it out |
 | 5. Mock Vision | `[x]` Completed | **MVP gate: 12 of 15 §52 items; 13–15 need Phases 7–8** |
 | 6. Roboflow Integration | `[x]` Completed | Workflow + model transports, live runtime switching, overlays, active learning |
-| 7. Quality Metrics | `[ ]` Todo | **Next** · owns §52 items 13–14 |
+| 7. Quality Metrics | `[~]` In Progress | Evaluation core complete; dashboard + acceptance tests remain |
 | 8. Historian | `[ ]` Todo | Owns §52 item 15 |
 | 9. Domain Shift | `[ ]` Todo | |
 | 10. Dataset Generator | `[ ]` Todo | **Interview demo gate (spec §53)** |
@@ -295,9 +295,15 @@ anyway — see D19.
 
 ## Phase 7 — Quality Metrics
 
-- [ ] 7.1 `EvaluationService` — TP/TN/FP/FN joined *after* PLC action
-- [ ] 7.2 Manufacturing terms — FP = False Reject, FN = Escape
-- [ ] 7.3 `MetricsEngine` — spec §29 counters, precision/recall/accuracy, FPY, mean + P95 latency
+**Accuracy recovery priority:** complete 7.1-7.3 first so the current model and every candidate
+use the same math. Then execute Phase 10, train the six-class model, update the Workflow, and
+rerun the screenshot catalog before spending time on dashboard polish, historian UI, or domain
+shift. Generic `coco/3` has no knowledge of this application's defect classes; threshold tuning
+is not a substitute for training data.
+
+- [x] 7.1 `EvaluationService` — TP/TN/FP/FN joined *after* PLC action
+- [x] 7.2 Manufacturing terms — FP = False Reject, FN = Escape
+- [x] 7.3 `MetricsEngine` — spec §29 counters, precision/recall/accuracy, FPY, mean + P95 latency, coverage + unknown rate
 - [ ] 7.4 `QualityDashboard` — confusion matrix, KPI tiles, defect Pareto, latency histogram
 - [ ] 7.5 The last two spec §49 tests — false negative recorded as an escape, false positive recorded as a false reject
 
@@ -325,13 +331,18 @@ anyway — see D19.
 
 ## Phase 10 — Dataset Generator
 
-- [ ] 10.1 `DATASET_GENERATION` mode — PLC/conveyor disabled, scenario-stepped
+- [x] 10.1 `DATASET_GENERATION` mode — PLC/conveyor disabled, scenario-stepped
 - [ ] 10.2 `DomainRandomizer` + seed reproducibility
-- [ ] 10.3 `AnnotationGenerator` — projected YOLO boxes for bottle/cap/label, occlusion culling
-- [ ] 10.4 `DatasetGenerator` — N images, defect mix, progress + cancel
-- [ ] 10.5 `DatasetExporter` — ZIP with `images/`, `labels/`, `data.yaml`, `dataset.json`
-- [ ] 10.6 Camera-pose split — training A–D, demo E excluded (spec §37)
-- [ ] 10.7 Annotation QA overlay mode
+- [x] 10.3a Six-class dataset contract — `bottle`, `missing_cap`, `missing_label`, `crooked_label`, `wrong_label`, `underfill`
+- [x] 10.3b `AnnotationGenerator` foundation — projected whole-product YOLO box, clamping, visibility and camera-frustum rejection
+- [x] 10.3c Annotation QA against the real bottle meshes and training camera poses
+- [~] 10.4 `DatasetGenerator` — deterministic balanced preview + progress complete; production mix, large batches, and cancel remain
+- [x] 10.5 `DatasetExporter` — ZIP with split `images/` + `labels/`, `data.yaml`, `dataset.json`
+- [x] 10.6 Camera-pose split — training A–D, demo E excluded (spec §37)
+- [x] 10.7 Annotation QA overlay mode + in-app training-set browser
+- [ ] 10.8 Generate at least 5,000 images with at least 500 examples per class
+- [~] 10.9 Roboflow ZIP upload, version generation, and confirmed training API handoff implemented; production dataset generation, annotation-health review, completed training verification, and active Workflow model selection remain
+- [ ] 10.10 Rerun the six-image screenshot catalog and retained evaluation set under a new versioned directory
 
 ---
 

@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "2026-09-17_workflow_stephen-miano_bottle-inspection_coco-3",
+  "capturedAt": "2026-09-17",
+  "configuration": {
+    "runtime": "PROXY",
+    "transport": "WORKFLOW",
+    "workflow": "stephen-miano/bottle-inspection",
+    "server": "Roboflow Inference Server 1.6.0-post1",
+    "workflowOutputs": ["model_predictions", "label_visualization"],
+    "configuredDirectModel": "coco/3",
+    "documentedWorkflowModel": "coco/3",
+    "workflowModelVersionExposedByResponse": false,
+    "minimumDetectionConfidence": 0.5,
+    "unknownConfidenceThreshold": 0.35,
+    "requestTimeoutMs": 850,
+    "simulationSpeed": 1,
+    "automaticProduction": false
+  },
+  "configurationScreenshot": "00-active-configuration.png",
+  "results": [
+    {
+      "truth": "NONE",
+      "screenshot": "01-good-product.png",
+      "visibleWorkflowLabels": ["bottle"],
+      "normalizedResult": "UNKNOWN",
+      "normalizedConfidence": 0,
+      "latencyMs": 434
+    },
+    {
+      "truth": "MISSING_CAP",
+      "screenshot": "02-missing-cap.png",
+      "visibleWorkflowLabels": ["bottle"],
+      "normalizedResult": "UNKNOWN",
+      "normalizedConfidence": 0,
+      "latencyMs": 324
+    },
+    {
+      "truth": "MISSING_LABEL",
+      "screenshot": "03-missing-label.png",
+      "visibleWorkflowLabels": [],
+      "normalizedResult": "UNKNOWN",
+      "normalizedConfidence": 0,
+      "latencyMs": 278
+    },
+    {
+      "truth": "CROOKED_LABEL",
+      "screenshot": "04-crooked-label.png",
+      "visibleWorkflowLabels": [],
+      "normalizedResult": "UNKNOWN",
+      "normalizedConfidence": 0,
+      "latencyMs": 258
+    },
+    {
+      "truth": "WRONG_LABEL",
+      "screenshot": "05-wrong-label.png",
+      "visibleWorkflowLabels": ["bottle"],
+      "normalizedResult": "UNKNOWN",
+      "normalizedConfidence": 0,
+      "latencyMs": 356
+    },
+    {
+      "truth": "UNDERFILL",
+      "screenshot": "06-underfill.png",
+      "visibleWorkflowLabels": ["bottle", "cup"],
+      "normalizedResult": "UNKNOWN",
+      "normalizedConfidence": 0,
+      "latencyMs": 389
+    }
+  ],
+  "nonCatalogedAttempts": [
+    {
+      "truth": "NONE",
+      "simulationSpeed": 5,
+      "result": "TRANSPORT_TIMEOUT",
+      "timeoutMs": 850,
+      "screenshot": null
+    }
+  ],
+  "sessionTotalsAtEnd": {
+    "successfulRequests": 11,
+    "failedRequests": 1,
+    "catalogedSuccessfulRequests": 6
+  }
+}

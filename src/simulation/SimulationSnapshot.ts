@@ -4,6 +4,7 @@ import type { FaultCode } from '@/controls/Interlocks';
 import type { StackLight } from '@/controls/PlcIo';
 import type { PlcTags } from '@/controls/PlcTags';
 import type { SystemEvent } from '@/core/events';
+import type { QualityMetrics } from '@/historian/MetricsEngine';
 import type { Alarm } from '@/models/Alarm';
 import type { ProductLifecycleState } from '@/models/Product';
 import type { MockVisionSettings } from '@/vision/MockVisionProvider';
@@ -95,5 +96,6 @@ export interface SimulationSnapshot {
   visionOverlay: VisionOverlaySnapshot | undefined;
   /** Present only while the Roboflow provider is the active one. */
   roboflow: RoboflowStatus | undefined;
+  qualityMetrics: QualityMetrics;
   recentEvents: readonly SystemEvent[];
 }

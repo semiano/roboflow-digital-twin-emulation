@@ -5,6 +5,8 @@ system inspects a rendered camera feed and a virtual PLC acts on the result.
 
 See [functional_spec.md](functional_spec.md) for the system specification,
 [plan.md](plan.md) for the implementation plan, and [TODO.md](TODO.md) for live build status.
+The current Roboflow operational and accuracy baseline is documented in
+[docs/roboflow-processing-audit.md](docs/roboflow-processing-audit.md).
 
 ## Quick start
 

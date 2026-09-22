@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "baselineId": "roboflow-pre-training-2026-09-17",
+  "recordedAt": "2026-09-17",
+  "status": "OPERATIONAL_BASELINE_ONLY",
+  "comparability": {
+    "accuracyBenchmarkValid": false,
+    "reason": "No per-unit ground-truth/prediction records or retained evaluation images exist for the prior live run.",
+    "minimumFutureSampleProtocol": {
+      "classes": [
+        "NONE",
+        "MISSING_CAP",
+        "MISSING_LABEL",
+        "CROOKED_LABEL",
+        "WRONG_LABEL",
+        "UNDERFILL"
+      ],
+      "minimumSamplesPerClass": 30,
+      "fixedInputsRequired": true,
+      "retainRawPredictions": true
+    }
+  },
+  "configuration": {
+    "applicationRuntime": "MOCK_VISION",
+    "roboflowRuntime": "PROXY",
+    "transport": "WORKFLOW",
+    "modelReference": "coco/3",
+    "minimumDetectionConfidence": 0.5,
+    "unknownConfidenceThreshold": 0.35,
+    "requestTimeoutMs": 850,
+    "plcTimeoutMs": 1000,
+    "failSafeMode": "REJECT_UNKNOWN",
+    "activeLearningEnabled": false
+  },
+  "currentProbe": {
+    "reachable": true,
+    "server": "Roboflow Inference Server",
+    "version": "1.6.0-post1",
+    "inferenceExecuted": false
+  },
+  "priorLiveRun": {
+    "source": "TODO.md Phase 6 live-run record",
+    "requestCount": {
+      "minimum": 100,
+      "exactCountKnown": false
+    },
+    "roundTripLatencyMs": {
+      "minimumObserved": 144,
+      "maximumObserved": 617,
+      "mean": null,
+      "p95": null
+    },
+    "observedBottleConfidence": {
+      "minimum": 0.31,
+      "maximum": 0.41
+    },
+    "observedDecision": "UNKNOWN",
+    "observedControlAction": "REJECT_BY_FAIL_SAFE",
+    "interpretation": "The generic COCO model was out of distribution for the synthetic renders. Its bottle detections were below the 0.5 evidence threshold."
+  },
+  "qualityMetrics": {
+    "evaluatedUnits": 0,
+    "truePositive": null,
+    "trueNegative": null,
+    "falsePositive": null,
+    "falseNegative": null,
+    "precision": null,
+    "recall": null,
+    "accuracy": null,
+    "unknownRate": null,
+    "defectClassAccuracy": null
+  }
+}

@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { conveyorConfig, rejectStationConfig } from '@/config/line.config';
 import { simulationConfig } from '@/config/simulation.config';
 import type { StackLight } from '@/controls/PlcIo';
+import { generateProductAnnotation } from '@/dataset/AnnotationGenerator';
+import type { DatasetCameraPose, DatasetRenderRequest, DatasetRenderResult } from '@/dataset/DatasetTypes';
 import type { ProductGroundTruth } from '@/models/GroundTruth';
 import type { Product } from '@/models/Product';
 import type { VisionInput } from '@/vision/VisionTypes';
@@ -15,6 +17,12 @@ import type { SceneBridge } from './SimulationEngine';
 const OPERATOR = simulationConfig.operatorCamera;
 const BELT_EDGE = conveyorConfig.widthMeters / 2;
 const MAX_BIN_DROP = 0.32;
+const DATASET_POSE_OFFSETS: Record<DatasetCameraPose, readonly [number, number, number]> = {
+  A: [0, 0, 0],
+  B: [-0.025, 0.018, 0.015],
+  C: [0.022, -0.012, -0.012],
+  D: [0.012, 0.025, 0.025],
+};
 
 const STACK_LENSES: Record<
   Exclude<StackLight, 'OFF'>,
@@ -112,6 +120,46 @@ export class SceneManager implements SceneBridge {
     };
   }
 
+  async captureDatasetSample(request: DatasetRenderRequest): Promise<DatasetRenderResult> {
+    const view = createProductView(request.truth);
+    const camera = this.inspectionCamera.camera;
+    const originalPosition = camera.position.clone();
+    const visibleProducts = [...this.views.values()].filter((product) => product.group.visible);
+    const poseOffset = DATASET_POSE_OFFSETS[request.cameraPose];
+    const jitter = (value: number): number => ((request.seed * value) % 17) / 1700 - 0.005;
+
+    for (const product of visibleProducts) product.group.visible = false;
+    view.group.position.set(
+      conveyorConfig.inspectionPositionMeters + jitter(7),
+      conveyorConfig.surfaceHeightMeters,
+      jitter(11),
+    );
+    view.group.rotation.y = jitter(13) * 18;
+    this.scene.add(view.group);
+
+    try {
+      camera.position.set(
+        originalPosition.x + poseOffset[0],
+        originalPosition.y + poseOffset[1],
+        originalPosition.z + poseOffset[2],
+      );
+      camera.lookAt(new THREE.Vector3(...simulationConfig.inspectionCamera.target));
+      camera.updateProjectionMatrix();
+      this.inspectionCamera.renderNow(this.scene);
+      const annotation = generateProductAnnotation(view.group, camera, request.truth.defectType);
+      if (!annotation) throw new Error('Generated product is outside the training camera frame');
+      const blob = await this.inspectionCamera.grabFrame(0.92);
+      const imageDataUrl = await this.blobToDataUrl(blob);
+      return { imageDataUrl, annotation };
+    } finally {
+      this.scene.remove(view.group);
+      for (const product of visibleProducts) product.group.visible = true;
+      camera.position.copy(originalPosition);
+      camera.lookAt(new THREE.Vector3(...simulationConfig.inspectionCamera.target));
+      camera.updateProjectionMatrix();
+    }
+  }
+
   syncProducts(
     products: readonly Product[],
     groundTruthOf: (unitId: string) => ProductGroundTruth | undefined,
@@ -193,5 +241,16 @@ export class SceneManager implements SceneBridge {
     stationLight.target.position.set(conveyorConfig.inspectionPositionMeters, 0.9, 0);
     this.scene.add(stationLight);
     this.scene.add(stationLight.target);
+  }
+
+  private blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => resolve(String(reader.result)), { once: true });
+      reader.addEventListener('error', () => reject(reader.error ?? new Error('frame read failed')), {
+        once: true,
+      });
+      reader.readAsDataURL(blob);
+    });
   }
 }

@@ -25,7 +25,7 @@ interface Chain {
 
 /** The production wiring, with the mock's error rates dialled out. */
 async function buildChain(seed = 5, latencyMode: LatencyMode = 50): Promise<Chain> {
-  const engine = new SimulationEngine({ seed });
+  const engine = new SimulationEngine({ seed, visionTimeoutMs: 1000 });
   engine.setRuntimeMode('MOCK_VISION');
   engine.configureMockVision({
     accuracy: 1,
@@ -72,6 +72,18 @@ describe('inspection -> reject chain', () => {
     expect(engine.products.count).toBe(0);
     expect(rejected.sort()).toEqual(bad.sort());
     expect(accepted.sort()).toEqual(good.sort());
+    expect(engine.getSnapshot().qualityMetrics).toMatchObject({
+      totalUnits: 6,
+      actualDefectiveUnits: 3,
+      truePositives: 3,
+      trueNegatives: 3,
+      falseRejects: 0,
+      escapes: 0,
+      accuracy: 1,
+      coverage: 1,
+      unknownRate: 0,
+      defectClassAccuracy: 1,
+    });
   });
 
   it('physically pushes the rejected unit clear of the belt without teleporting', async () => {

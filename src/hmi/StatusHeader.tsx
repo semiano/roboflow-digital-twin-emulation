@@ -10,7 +10,11 @@ const MACHINE_TONE = {
   FAULTED: 'fault',
 } as const;
 
-export function StatusHeader() {
+export interface StatusHeaderProps {
+  workspace?: 'operations' | 'training';
+}
+
+export function StatusHeader({ workspace = 'operations' }: StatusHeaderProps) {
   const snapshot = useSimulationStore((state) => state.snapshot);
 
   const visionValue = !snapshot.visionAttached
@@ -23,7 +27,11 @@ export function StatusHeader() {
     <header className="status-header">
       <div className="status-header__identity">
         <span className="status-header__line">{LINE_NAME}</span>
-        <span className="status-header__phase">Phase 6 · Roboflow Integration</span>
+        <span className="status-header__phase">
+          {workspace === 'training'
+            ? 'Phase 10 · Dataset Generation & Training'
+            : 'Operations · Vision Inspection'}
+        </span>
       </div>
 
       <div className="status-header__chips">

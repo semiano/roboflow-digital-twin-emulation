@@ -98,7 +98,7 @@ export function FaultInjectionPanel() {
               ))}
             </div>
             <p className="panel__note">
-              1500 ms exceeds the 1000 ms PLC timeout, forcing UNKNOWN and exercising the fail-safe.
+              1500 ms exercises deterministic high latency; Roboflow cloud uses its own request watchdog.
             </p>
           </div>
 
